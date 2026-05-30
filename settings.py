@@ -1,101 +1,75 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Settings Module - User preferences and configuration
-"""
 
-import json
 import os
-
+import json
+import multiprocessing
 
 class Settings:
-    """Manage application settings"""
+    """Quản lý cài đặt ứng dụng"""
     
     def __init__(self):
-        self.settings_file = os.path.join(os.path.expanduser("~"), ".video_splitter_settings.json")
+        self.settings_file = os.path.join(
+            os.path.expanduser("~"), 
+            ".auto_video_splitter_settings.json"
+        )
         self.default_settings = {
             'output_folder': os.path.join(os.path.expanduser("~"), "Videos", "Split"),
             'output_format': 'mp4',
-            'quality': 2,  # Medium
+            'quality': 2,
             'use_gpu': True,
-            'nvenc_preset': 4,  # p4
-            'split_mode': 0,  # By number
+            'nvenc_preset': 4,
+            'split_mode': 0,
             'num_videos': 10,
             'duration_minutes': 10,
             'default_speed': 1.0,
             'dark_theme': True,
             'auto_save_queue': True,
-            'max_parallel': 0,  # Auto-detect
+            'max_parallel': 0,
             'cpu_limit': 90,
             'ram_limit_gb': 24
         }
         self.settings = self.load_settings()
         
-    def load_settings(self) -> dict:
-        """Load settings from file"""
+    def load_settings(self):
+        """Tải cài đặt từ file"""
         try:
             if os.path.exists(self.settings_file):
-                with open(self.settings_file, 'r') as f:
+                with open(self.settings_file, 'r', encoding='utf-8') as f:
                     loaded = json.load(f)
-                    # Merge with defaults
                     merged = self.default_settings.copy()
                     merged.update(loaded)
                     return merged
         except Exception as e:
-            print(f"Error loading settings: {e}")
-            
+            print(f"Lỗi tải settings: {e}")
         return self.default_settings.copy()
         
     def save_settings(self):
-        """Save settings to file"""
+        """Lưu cài đặt"""
         try:
-            with open(self.settings_file, 'w') as f:
-                json.dump(self.settings, f, indent=2)
+            os.makedirs(os.path.dirname(self.settings_file), exist_ok=True)
+            with open(self.settings_file, 'w', encoding='utf-8') as f:
+                json.dump(self.settings, f, indent=2, ensure_ascii=False)
         except Exception as e:
-            print(f"Error saving settings: {e}")
+            print(f"Lỗi lưu settings: {e}")
             
-    def get(self, key: str, default=None):
-        """Get setting value"""
+    def get(self, key, default=None):
         return self.settings.get(key, default)
         
-    def set(self, key: str, value):
-        """Set setting value"""
+    def set(self, key, value):
         self.settings[key] = value
         self.save_settings()
         
-    def get_optimal_workers(self) -> int:
-        """Calculate optimal number of parallel workers"""
-        import multiprocessing
-        
+    def get_optimal_workers(self):
+        """Tính số lượng workers tối ưu"""
         cpu_count = multiprocessing.cpu_count()
-        ram_gb = self._get_available_ram_gb()
-        
-        # Limit based on CPU cores
-        max_workers = cpu_count
-        
-        # Limit based on RAM (rough estimate: 2GB per worker)
-        ram_limited = int(ram_gb / 2)
-        
-        # Use the lower limit
-        workers = min(max_workers, ram_limited)
-        
-        # Apply user limit if set
-        user_limit = self.get('max_parallel', 0)
-        if user_limit > 0:
-            workers = min(workers, user_limit)
-            
-        # Ensure at least 1 worker
-        return max(1, workers)
-        
-    def _get_available_ram_gb(self) -> float:
-        """Get available RAM in GB"""
+        # Giới hạn theo RAM (mỗi worker ~1GB)
         try:
             import psutil
-            ram = psutil.virtual_memory()
-            available_gb = ram.available / (1024**3)
-            
-            # Apply user limit
-            user_limit = self.get('ram_limit_gb', 24)
-            return min(available_gb, user_limit)
+            ram_gb = psutil.virtual_memory().available / (1024**3)
+            ram_limited = int(ram_gb / 1.5)
         except:
-            return 16  # Default fallback
+            ram_limited = 16
+            
+        workers = min(cpu_count, ram_limited, 48)
+        return max(1, workers)
