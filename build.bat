@@ -1,64 +1,62 @@
 @echo off
+chcp 65001 > nul
+title Auto Video Splitter Pro
+
 echo ========================================
-echo Auto Video Splitter Pro - Build Script
+echo Auto Video Splitter Pro
 echo Optimized for Dual Xeon + GTX 1070
 echo ========================================
 echo.
 
-REM Check Python
-python --version >nul 2>&1
+REM Kiểm tra Python
+python --version > nul 2>&1
 if errorlevel 1 (
-    echo [ERROR] Python not found! Please install Python 3.8 or higher.
+    echo [LOI] Khong tim thay Python!
+    echo Vui long cai dat Python 3.8 hoac cao hon
+    echo Tai: https://www.python.org/downloads/
     pause
     exit /b 1
 )
 
-REM Install requirements
-echo [1/4] Installing Python dependencies...
-pip install -r requirements.txt
+REM Hiển thị phiên bản Python
+echo Python version:
+python --version
+echo.
+
+REM Kiểm tra và cài đặt dependencies
+echo [1/3] Kiem tra dependencies...
+pip list | findstr PyQt6 > nul
 if errorlevel 1 (
-    echo [WARNING] Some dependencies may already be installed...
+    echo Dang cai dat dependencies...
+    pip install -r requirements.txt
+    if errorlevel 1 (
+        echo [LOI] Khong the cai dat dependencies!
+        pause
+        exit /b 1
+    )
 )
 
-REM Install PyInstaller if not available
-echo [2/4] Installing PyInstaller...
-pip install pyinstaller
+REM Tạo thư mục cần thiết
+echo [2/3] Tao thu muc can thiet...
+if not exist "temp" mkdir temp
+if not exist "logs" mkdir logs
+if not exist "%USERPROFILE%\Videos\Split" mkdir "%USERPROFILE%\Videos\Split"
 
-REM Build executable
-echo [3/4] Building executable...
-pyinstaller --onefile ^
-    --windowed ^
-    --name "AutoVideoSplitterPro" ^
-    --icon=app.ico ^
-    --add-data "requirements.txt;." ^
-    --hidden-import PyQt6 ^
-    --hidden-import psutil ^
-    --hidden-import GPUtil ^
-    --hidden-import numpy ^
-    --collect-all PyQt6 ^
-    main.py
+REM Chạy ứng dụng
+echo [3/3] Khoi dong Auto Video Splitter Pro...
+echo.
+echo ========================================
+echo UD DANG CHAY...
+echo ========================================
+echo.
+
+python main.py
 
 if errorlevel 1 (
-    echo [ERROR] Build failed!
+    echo.
+    echo [LOI] Ung dung bi loi!
+    echo Vui long xem thong bao ben tren de biet chi tiet.
     pause
-    exit /b 1
 )
 
-REM Copy FFmpeg if available
-echo [4/4] Preparing distribution...
-if exist "ffmpeg.exe" (
-    copy "ffmpeg.exe" "dist\"
-    echo Copied FFmpeg to distribution folder.
-)
-
-echo.
-echo ========================================
-echo BUILD SUCCESSFUL!
-echo ========================================
-echo.
-echo Executable location: dist\AutoVideoSplitterPro.exe
-echo.
-echo Note: First run may take a moment to download FFmpeg
-echo       if not already present.
-echo.
 pause
